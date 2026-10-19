@@ -1,0 +1,35 @@
+import random
+from typing import Dict
+from ..config.settings import CROP_CONFIG
+
+class Market:
+    """Represents the dynamic market for crops."""
+    
+    def __init__(self):
+        # Initialize prices based on base_price in config
+        self.current_prices: Dict[str, float] = {
+            crop_name: config["base_price"]
+            for crop_name, config in CROP_CONFIG.items()
+        }
+        
+    def get_current_price(self, crop_name: str) -> float:
+        """Returns the current market price for a given crop."""
+        if crop_name not in self.current_prices:
+            raise ValueError(f"Unknown crop: {crop_name}")
+        return self.current_prices[crop_name]
+        
+    def update_prices(self):
+        """Simulates daily price fluctuations."""
+        for crop_name in self.current_prices:
+            base_price = CROP_CONFIG[crop_name]["base_price"]
+            current = self.current_prices[crop_name]
+            
+            # Simple random walk: prices change by -5% to +5% daily
+            change_percent = random.uniform(-0.05, 0.05)
+            new_price = current * (1 + change_percent)
+            
+            # Keep prices within a reasonable range (e.g., 50% to 150% of base)
+            min_price = base_price * 0.5
+            max_price = base_price * 1.5
+            
+            self.current_prices[crop_name] = max(min_price, min(new_price, max_price))
