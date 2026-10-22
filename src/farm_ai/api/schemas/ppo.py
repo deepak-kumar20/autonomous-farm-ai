@@ -13,6 +13,8 @@ class PPOActionResponse(BaseModel):
     action: int = Field(..., description="Integer action index (0-23) chosen by PPO")
     action_details: Dict[str, Any] = Field(..., description="Decoded action details (type, label, field, crop)")
     deterministic: bool = Field(..., description="Mode used during prediction")
+    policy_top_action: Dict[str, Any] = Field(default_factory=dict, description="The policy's most preferred action before the feasibility filter")
+    filter_rejections: int = Field(0, description="Number of higher-ranked actions the feasibility filter rejected")
 
 
 class PPOStepRequest(BaseModel):
@@ -21,6 +23,7 @@ class PPOStepRequest(BaseModel):
 
 class PPOStepResponse(BaseModel):
     session_id: str = Field(..., description="Unique UUID identifying the farm session")
+    filter_rejections: int = Field(0, description="Candidates rejected by the feasibility filter before this action")
     action: int = Field(..., description="Action chosen and executed by PPO")
     action_details: Dict[str, Any] = Field(..., description="Decoded action details")
     state: FarmStateSchema = Field(..., description="New farm state after executing action")

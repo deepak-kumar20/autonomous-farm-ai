@@ -15,6 +15,7 @@ class Field:
         self.crop: Optional[Crop] = None
         self.growth_progress: int = 0
         self.state: FieldState = FieldState.EMPTY
+        self.crop_uid: Optional[int] = None  # ledger id of the crop currently in the field
         
     @property
     def is_planted(self) -> bool:
@@ -53,3 +54,4 @@ class Field:
         self.crop = None
         self.growth_progress = 0
         self.state = FieldState.EMPTY
+        self.crop_uid = None

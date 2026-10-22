@@ -1,36 +1,23 @@
-import random
-from typing import Dict
-from ..config.settings import EVENT_PROBABILITIES
+"""Price-shock view over a pre-generated scenario.
+
+Shocks are already folded into the scenario's reference price path (all crop prices × 0.5 or × 2
+on a shock day); this class only exposes the risk and the realised event for display and logging.
+"""
+from ..framework.scenario import risk_label
+
 
 class PriceShockSystem:
-    """Manages market price shocks."""
-    
-    def __init__(self):
-        self.shock_probability = EVENT_PROBABILITIES["price_shock"]
-        self.shock_forecast = "LOW"
-        self.is_shock_active = False
+    def __init__(self, scenario=None):
+        self.scenario = scenario
 
-    def update(self):
-        """Updates price shock forecasts and events."""
-        roll = random.random()
-        
-        if roll < self.shock_probability:
-            self.is_shock_active = True
-            self.shock_forecast = "HIGH"
-        elif roll < self.shock_probability * 3:
-            self.is_shock_active = False
-            self.shock_forecast = "HIGH"
-        elif roll < self.shock_probability * 6:
-            self.is_shock_active = False
-            self.shock_forecast = "MEDIUM"
-        else:
-            self.is_shock_active = False
-            self.shock_forecast = "LOW"
-            
-    def apply_effects(self, market):
-        """Applies price shocks to the market."""
-        if self.is_shock_active:
-            # Massive drop or spike in all prices
-            shock_factor = random.choice([0.5, 2.0])
-            for crop_name in market.current_prices:
-                market.current_prices[crop_name] *= shock_factor
+    def risk(self, day: int) -> float:
+        return self.scenario.shock_risk[day - 1]
+
+    def occurs(self, day: int) -> bool:
+        return self.scenario.shock_event[day - 1]
+
+    def factor(self, day: int) -> float:
+        return self.scenario.shock_factor[day - 1]
+
+    def label(self, day: int) -> str:
+        return risk_label(self.risk(day))

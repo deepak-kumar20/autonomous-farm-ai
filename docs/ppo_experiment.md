@@ -1,3 +1,8 @@
+> **Legacy record (environment version 1).** The numbers below were produced by the original simulator, whose
+> weather, pest and price randomness was unseeded, so they cannot be reproduced. Both checkpoints described here
+> choose an invalid action on every step when run greedily (see `research_outputs/audit_report.md`, A9). The
+> current model is `models/ppo/farm_ppo_v2.zip`, documented in `research_outputs/experiment_methods.md`.
+
 # PPO Experiment Record
 
 ## Environment Configuration

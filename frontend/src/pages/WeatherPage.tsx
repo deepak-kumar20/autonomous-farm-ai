@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { useFarmContext } from '../context/FarmContext';
+import { farmApi } from '../services/api';
+import { RiskCalendar } from '../components/game/RiskCalendar';
+import type { ScenarioPublic } from '../types/farm';
 import { PageBanner, SectionTitle } from '../components/game/common';
 import { Bug, Coin, Sun } from '../components/art/Scenery';
 
@@ -53,14 +56,14 @@ const RISKS = [
     key: 'drought',
     title: 'Drought',
     icon: <Sun size={44} hot />,
-    effect: 'When a drought hits, every planted field loses one day of growth progress.',
+    effect: 'When a drought actually happens, every growing crop loses one day of growth progress. Ready crops are safe.',
     advice: 'Prefer fast crops like Wheat when the forecast is high.',
   },
   {
     key: 'pest',
     title: 'Pest outbreak',
     icon: <Bug size={44} />,
-    effect: 'An outbreak wipes out one random planted field — growing or ready.',
+    effect: 'When an outbreak actually happens, it wipes out one random planted field — growing or ready.',
     advice: 'Harvest ripe fields quickly; spread risk across fields.',
   },
   {
@@ -73,7 +76,13 @@ const RISKS = [
 ];
 
 export const WeatherPage: React.FC = () => {
-  const { farmState, timeline, events } = useFarmContext();
+  const { farmState, timeline, events, sessionId } = useFarmContext();
+  const [scenario, setScenario] = useState<ScenarioPublic | null>(null);
+  const scenarioId = farmState?.scenario_id;
+  useEffect(() => {
+    if (!sessionId) return;
+    farmApi.getSessionScenario(sessionId).then(setScenario).catch(() => setScenario(null));
+  }, [sessionId, scenarioId]);
   if (!farmState) return null;
   const risks = farmState.risk_forecasts;
   const hot = risks.drought === 'HIGH';
@@ -81,7 +90,7 @@ export const WeatherPage: React.FC = () => {
 
   return (
     <div>
-      <PageBanner title="Weather Station" subtitle="Tomorrow’s forecast for drought, pests and the market" mood={hot ? 'hot' : 'day'} art={<Anemometer />} />
+      <PageBanner title="Weather Station" subtitle="Simulated risks for the next day — chances, not certainties" mood={hot ? 'hot' : 'day'} art={<Anemometer />} />
 
       <div className="grid md:grid-cols-3 gap-5">
         {RISKS.map((r, i) => {
@@ -96,6 +105,9 @@ export const WeatherPage: React.FC = () => {
                 <h3 className="font-display font-bold text-2xl text-[#3b2412]">{r.title}</h3>
               </div>
               <Gauge level={lvl} />
+              {farmState.risks?.[r.key] != null && (
+                <div className="text-center text-sm font-bold text-[#6b4f36] -mt-1">{(farmState.risks[r.key] * 100).toFixed(1)}% chance</div>
+              )}
               <div className="flex justify-center -mt-1 mb-3">
                 <span className="rounded-full border-[3px] px-4 py-1 font-display font-bold text-lg" style={{ background: ui.bg, color: ui.ink, borderColor: ui.border }}>
                   {ui.label} risk
@@ -122,7 +134,7 @@ export const WeatherPage: React.FC = () => {
             </div>
           }
         >
-          Forecast history
+          Risk level history
         </SectionTitle>
         <div className="overflow-x-auto no-scrollbar">
           <table className="border-separate border-spacing-1 text-xs font-bold text-[#6b4f36]">
@@ -158,6 +170,13 @@ export const WeatherPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {scenario && (
+        <div className="panel p-5 mt-6">
+          <SectionTitle>This season's risk calendar ({scenario.scenario_id})</SectionTitle>
+          <RiskCalendar timeline={scenario.timeline} />
+        </div>
+      )}
 
       <div className="panel p-5 mt-6">
         <SectionTitle>What actually happened</SectionTitle>

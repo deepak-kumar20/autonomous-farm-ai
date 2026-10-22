@@ -1,37 +1,21 @@
-import random
-from typing import Dict
-from ..config.settings import EVENT_PROBABILITIES
+"""Drought (weather) view over a pre-generated scenario.
+
+The original implementation rolled the global `random` module every day and derived the
+"forecast" label from the same roll as the event. Risk and occurrence now come from the
+scenario: `risk(day)` is the configured probability, `occurs(day)` the realised event.
+"""
+from ..framework.scenario import risk_label
+
 
 class WeatherSystem:
-    """Manages weather events like drought."""
-    
-    def __init__(self):
-        self.drought_probability = EVENT_PROBABILITIES["drought"]
-        self.drought_forecast = "LOW"
-        self.is_drought_active = False
+    def __init__(self, scenario=None):
+        self.scenario = scenario
 
-    def update(self):
-        """Updates weather forecasts and events."""
-        # Simple forecast mechanic: if random is close to prob, forecast is HIGH
-        roll = random.random()
-        
-        if roll < self.drought_probability:
-            self.is_drought_active = True
-            self.drought_forecast = "HIGH"  # Too late, it's here!
-        elif roll < self.drought_probability * 3:
-            self.is_drought_active = False
-            self.drought_forecast = "HIGH"
-        elif roll < self.drought_probability * 6:
-            self.is_drought_active = False
-            self.drought_forecast = "MEDIUM"
-        else:
-            self.is_drought_active = False
-            self.drought_forecast = "LOW"
-            
-    def apply_effects(self, fields: list):
-        """Applies weather effects to fields."""
-        if self.is_drought_active:
-            # E.g., reduce growth progress by 1 to simulate stunted growth
-            for field in fields:
-                if field.is_planted and field.growth_progress > 0:
-                    field.growth_progress -= 1
+    def risk(self, day: int) -> float:
+        return self.scenario.drought_risk[day - 1]
+
+    def occurs(self, day: int) -> bool:
+        return self.scenario.drought(day)
+
+    def label(self, day: int) -> str:
+        return risk_label(self.risk(day))

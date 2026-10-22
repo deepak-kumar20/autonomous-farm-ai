@@ -16,12 +16,21 @@ class FarmStateSchema(BaseModel):
     fields: List[FieldStateSchema] = Field(..., description="List of 5 fields")
     inventory: Dict[str, int] = Field(..., description="Harvested crops inventory count")
     market_prices: Dict[str, float] = Field(..., description="Current selling prices for crops")
-    risk_forecasts: Dict[str, str] = Field(..., description="Risk forecasts (LOW, MEDIUM, HIGH)")
+    risk_forecasts: Dict[str, str] = Field(..., description="Risk level labels (LOW, MEDIUM, HIGH) for the next unresolved loss stage")
+    risks: Dict[str, float] = Field(default_factory=dict, description="Daily event probabilities for the next unresolved loss stage (simulated, not real forecasts)")
+    scenario_id: Optional[str] = Field(None, description="Id of the pre-generated 30-day scenario")
+    events: Dict[str, Any] = Field(default_factory=dict, description="Events resolved in the most recent loss stage")
 
 
 class ResetRequest(BaseModel):
-    seed: Optional[int] = Field(None, description="Optional random seed for environment reproducibility")
+    seed: Optional[int] = Field(None, description="Scenario seed: the same profile + seed always yields the same 30-day scenario")
     session_id: Optional[str] = Field(None, description="Optional existing session ID to reset; if null, a new session is created")
+    profile: str = Field("baseline", description="Scenario profile: baseline, dry, pest or combined")
+    decision_order: Optional[str] = Field(None, description="LFM (default) or FML")
+    filter_mode: Optional[str] = Field(None, description="none, deterministic (default) or uncertainty")
+    threshold_rule: Optional[str] = Field(None, description="fixed or break_even (uncertainty filter only)")
+    completion_threshold: Optional[float] = Field(None, ge=0, le=1, description="Fixed threshold for the uncertainty filter")
+    market_model: Optional[str] = Field(None, description="exogenous (default) or price_impact")
 
 
 class ResetResponse(BaseModel):

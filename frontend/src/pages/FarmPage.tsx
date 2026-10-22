@@ -47,7 +47,7 @@ export const FarmPage: React.FC = () => {
 
   const run = useCallback(
     (a: ActionItem | undefined, fallbackMsg: string) => {
-      if (!a || !a.valid) return flash(fallbackMsg);
+      if (!a || !a.valid) return flash(a?.reason ?? fallbackMsg);
       if (isBusy) return;
       farm.executeHumanAction(a.id);
     },
@@ -106,6 +106,12 @@ export const FarmPage: React.FC = () => {
   return (
     <div className="grid lg:grid-cols-[1fr_340px] gap-5">
       <div className="min-w-0 space-y-4">
+        {farm.matchId && (
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border-[3px] border-[#4b33a6] bg-[#efe9ff] px-4 py-2 text-sm font-bold text-[#4b33a6]">
+            <span className="rounded-full bg-[#8b6cf0] px-2 py-0.5 text-xs text-white">VERSUS</span>
+            You are playing match {farm.matchId} on scenario {farmState.scenario_id}. Finish all 30 days, then the AI replays the same scenario.
+          </div>
+        )}
         <FarmScene
           fields={fields}
           risks={farmState.risk_forecasts}
@@ -242,6 +248,7 @@ const FieldPanel: React.FC<{
                 whileTap={{ scale: 0.97 }}
                 onClick={() => onRun(a, `Not enough coins for ${c.name}`)}
                 disabled={busy || !a?.valid}
+                title={a?.valid ? `Plant ${c.name}` : a?.reason ?? undefined}
                 className="w-full flex items-center gap-3 rounded-2xl border-[3px] p-2 text-left disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: c.accentSoft, borderColor: c.accent }}
               >
@@ -254,7 +261,9 @@ const FieldPanel: React.FC<{
                 </div>
                 <div className="text-right">
                   <div className="font-display font-bold text-[#3b2412] tabular">{formatMoney(c.plantingCost)}</div>
-                  <div className={`text-[10px] font-extrabold ${affordable ? 'text-[#3f8a2a]' : 'text-[#c23a33]'}`}>{affordable ? 'PLANT' : 'TOO PRICEY'}</div>
+                  <div className={`text-[10px] font-extrabold ${a?.valid ? 'text-[#3f8a2a]' : 'text-[#c23a33]'}`}>
+                    {a?.valid ? 'PLANT' : !affordable ? 'TOO PRICEY' : a?.code === 'HORIZON' ? 'TOO LATE' : a?.code === 'LOW_COMPLETION_PROBABILITY' ? 'TOO RISKY' : 'BLOCKED'}
+                  </div>
                 </div>
               </motion.button>
             );

@@ -16,6 +16,26 @@ npm run dev
 This starts the FastAPI backend (port 8000) and the React frontend, then opens http://localhost:5173 in your browser.
 The first run installs all Python and npm packages automatically (a few minutes). Press **Ctrl+C** to stop everything.
 
+## Research framework (Paper 2)
+
+The simulator is scenario-driven and reproducible. Each 30-day season is a saved scenario (`S-<profile>-<seed>`) of
+daily risks, realised events and prices. Every action (human or AI) passes through the same six-stage daily process
+and feasibility filter.
+
+```bash
+# run all experiments and rebuild tables, charts and diagrams in research_outputs/ (≈20 s)
+.venv/bin/python scripts/run_experiments.py
+# retrain the PPO agent (optional, ≈7 min CPU)
+.venv/bin/python scripts/train_ppo.py --timesteps 2000000 --seed 7
+# tests
+.venv/bin/python -m unittest discover -s tests
+```
+
+* `research_outputs/README.md` lists the outputs and metric definitions.
+* `research_outputs/audit_report.md` describes the original implementation and every change.
+* Human vs AI: open the **Versus** page in the app, play a season, then run an AI on the same scenario. Matches are
+  saved in `data/matches/` and included the next time experiments run.
+
 ---
 
 ## Baseline Agents

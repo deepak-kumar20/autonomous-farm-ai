@@ -128,8 +128,23 @@ function toastsFor(e: FarmEvent): Toast[] {
 }
 
 export const EventToasts: React.FC = () => {
-  const { lastEvent } = useFarmContext();
+  const { lastEvent, rejection } = useFarmContext();
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  useEffect(() => {
+    if (!rejection) return;
+    const t: Toast = {
+      id: `rej-${rejection.id}`,
+      ai: false,
+      icon: <X className="w-6 h-6 text-[#c23a33]" />,
+      title: 'Action rejected — the day did not pass',
+      detail: rejection.message,
+      tone: 'bad',
+    };
+    setToasts((list) => [t, ...list.filter((x) => x.title !== t.title)].slice(0, 3));
+    const timer = window.setTimeout(() => setToasts((list) => list.filter((x) => x.id !== t.id)), 4500);
+    return () => window.clearTimeout(timer);
+  }, [rejection]);
 
   useEffect(() => {
     if (!lastEvent) return;
@@ -257,7 +272,7 @@ export const FlyerLayer: React.FC = () => {
 const CONFETTI = ['#ffd23f', '#e2524a', '#58a83a', '#43a9e3', '#8b6cf0', '#f5ac15'];
 
 export const SeasonEndModal: React.FC = () => {
-  const { isSeasonComplete, metrics, resetFarm, events } = useFarmContext();
+  const { isSeasonComplete, metrics, resetFarm, events, matchId } = useFarmContext();
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -326,6 +341,11 @@ export const SeasonEndModal: React.FC = () => {
               ))}
             </div>
             <div className="flex gap-2 justify-center flex-wrap">
+              {matchId && (
+                <Link to={`/versus?match=${matchId}`} className="btn btn-purple btn-lg w-full" onClick={() => setDismissed(true)}>
+                  Run AI on the same scenario →
+                </Link>
+              )}
               <Link to="/journal" className="btn btn-cream" onClick={() => setDismissed(true)}>
                 Read journal
               </Link>

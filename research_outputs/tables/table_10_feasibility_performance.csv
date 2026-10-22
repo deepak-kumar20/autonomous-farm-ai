@@ -1,0 +1,5 @@
+Filter mode,Episodes,Actions evaluated,Accepted actions,Rejected actions,Rejection rate,Completion rate,Prediction metric,Mean filter time (ms/episode)
+No feasibility filter,600,18000,18000,0,0.000,61.0%,n/a (no probability used),0.03
+Full framework (LFM + deterministic filter),600,23162,18000,5162,0.223,66.7%,n/a (no probability used),0.16
+Uncertainty filter (fixed τ = 0.8),600,139731,18000,121731,0.871,80.5%,"Brier 0.106 (climatology 0.107, n=938)",7.17
+Uncertainty filter (break-even τ),600,33312,18000,15312,0.460,70.8%,"Brier 0.168 (climatology 0.173, n=5616)",1.38

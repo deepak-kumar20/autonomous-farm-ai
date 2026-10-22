@@ -103,6 +103,10 @@ function deriveEvent(id: number, prev: FarmState, next: FarmState, meta: StepMet
   return event;
 }
 
+function randomSeed(): number {
+  return Math.floor(Math.random() * 1_000_000);
+}
+
 function snapshot(state: FarmState, metrics: FarmMetrics | null): DaySnapshot {
   return {
     day: state.day,
@@ -137,6 +141,8 @@ export function useFarm() {
   const [autopilot, setAutopilot] = useState(false);
   const [autopilotSpeed, setAutopilotSpeed] = useState<AutopilotSpeed>('normal');
   const [deterministic, setDeterministic] = useState(true);
+  const [rejection, setRejection] = useState<{ id: number; message: string; code: string } | null>(null);
+  const [matchId, setMatchId] = useState<string | null>(null);
 
   const eventCounter = useRef(0);
   const stateRef = useRef<FarmState | null>(null);
@@ -173,6 +179,28 @@ export function useFarm() {
     }
   }, []);
 
+  /** Points the whole UI at a session and clears per-session history. */
+  const adoptSession = useCallback(async (sid: string, state?: FarmState) => {
+    const [stateData, actionsData, metricsData] = await Promise.all([
+      state ? Promise.resolve(state) : farmApi.getState(sid),
+      farmApi.getActions(sid),
+      farmApi.getMetrics(sid),
+    ]);
+    setSessionId(sid);
+    setFarmState(stateData);
+    setActions(actionsData);
+    setMetrics(metricsData);
+    setLastReward(null);
+    setIsSeasonComplete(metricsData.season_over);
+    setAiRecommendation(null);
+    setActionHistory([]);
+    setEvents([]);
+    setLastEvent(null);
+    setRejection(null);
+    setAutopilot(false);
+    setTimeline([snapshot(stateData, metricsData)]);
+  }, []);
+
   const startFresh = useCallback(async (seed: number, existingSid?: string) => {
     const resetRes = await farmApi.resetFarm(seed, existingSid);
     const sid = resetRes.session_id;
@@ -180,6 +208,8 @@ export function useFarm() {
       farmApi.getActions(sid),
       farmApi.getMetrics(sid),
     ]);
+    setMatchId(null);
+    setRejection(null);
     setSessionId(sid);
     setFarmState(resetRes.state);
     setActions(actionsData);
@@ -194,7 +224,7 @@ export function useFarm() {
     setTimeline([snapshot(resetRes.state, metricsData)]);
   }, []);
 
-  const initSession = useCallback(async (seed = 42) => {
+  const initSession = useCallback(async (seed = randomSeed()) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -264,6 +294,16 @@ export function useFarm() {
     try {
       const selected = actions.find((a) => a.id === actionId);
       const stepRes = await farmApi.executeAction(sessionId, actionId);
+      if (stepRes.accepted === false) {
+        // Rejected by the feasibility filter: nothing changed, the day did not advance.
+        setRejection({
+          id: Date.now(),
+          message: stepRes.feasibility?.reason ?? 'That action is not allowed right now.',
+          code: stepRes.feasibility?.code ?? 'REJECTED',
+        });
+        setActions(await farmApi.getActions(sessionId));
+        return;
+      }
       await recordStep(
         sessionId,
         prev,
@@ -340,7 +380,7 @@ export function useFarm() {
     return () => window.clearTimeout(t);
   }, [autopilot, autopilotSpeed, isSeasonComplete, isAIStepping, isActionExecuting, sessionId, executeAIAction, farmState]);
 
-  const resetFarm = useCallback(async (seed = 42) => {
+  const resetFarm = useCallback(async (seed = randomSeed()) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -353,6 +393,20 @@ export function useFarm() {
   }, [sessionId, startFresh]);
 
   const dismissError = useCallback(() => setError(null), []);
+
+  /** Switches the game to an existing session, e.g. the human side of a Human-vs-AI match. */
+  const loadSession = useCallback(async (sid: string, match: string | null = null) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await adoptSession(sid);
+      setMatchId(match);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load session');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [adoptSession]);
 
   return {
     sessionId,
@@ -379,6 +433,9 @@ export function useFarm() {
     setAutopilotSpeed,
     deterministic,
     setDeterministic,
+    rejection,
+    matchId,
+    loadSession,
     checkHealth,
     initSession,
     refreshSessionData,

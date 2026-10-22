@@ -20,6 +20,7 @@ import { BarnPage } from './pages/BarnPage';
 import { WeatherPage } from './pages/WeatherPage';
 import { AIFarmerPage } from './pages/AIFarmerPage';
 import { JournalPage } from './pages/JournalPage';
+import { VersusPage } from './pages/VersusPage';
 
 /** Pages that need a live farm session show a loader / offline state instead. */
 const NeedsFarm: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -49,6 +50,7 @@ const AnimatedRoutes: React.FC = () => {
           <Route path="/weather" element={<NeedsFarm><WeatherPage /></NeedsFarm>} />
           <Route path="/ai" element={<NeedsFarm><AIFarmerPage /></NeedsFarm>} />
           <Route path="/journal" element={<NeedsFarm><JournalPage /></NeedsFarm>} />
+          <Route path="/versus" element={<NeedsFarm><VersusPage /></NeedsFarm>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </motion.main>

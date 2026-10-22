@@ -7,6 +7,12 @@ import type {
   StepResponse,
   PPOPredictResponse,
   PPOStepResponse,
+  ScenarioPublic,
+  ScenarioProfile,
+  MatchRecord,
+  MatchListItem,
+  AIRun,
+  AgentInfo,
 } from '../types/farm';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -58,14 +64,48 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 export const farmApi = {
   getHealth: () => request<HealthResponse>('/api/health'),
 
-  resetFarm: (seed?: number, sessionId?: string) =>
+  resetFarm: (seed?: number, sessionId?: string, profile = 'baseline') =>
     request<ResetResponse>('/api/farm/reset', {
       method: 'POST',
       body: JSON.stringify({
         seed: seed !== undefined ? seed : null,
         session_id: sessionId || null,
+        profile,
       }),
     }),
+
+  getSessionScenario: (sessionId: string) => request<ScenarioPublic>(`/api/farm/${sessionId}/scenario`),
+
+  getProfiles: () => request<ScenarioProfile[]>('/api/scenarios/profiles'),
+
+  createScenario: (profile: string, seed?: number | null) =>
+    request<ScenarioPublic>('/api/scenarios', {
+      method: 'POST',
+      body: JSON.stringify({ profile, seed: seed ?? null }),
+    }),
+
+  createMatch: (scenarioId: string, playerLabel: string, filterMode: string, thresholdRule = 'fixed') =>
+    request<{ match_id: string; session_id: string; scenario: ScenarioPublic }>('/api/matches', {
+      method: 'POST',
+      body: JSON.stringify({
+        scenario_id: scenarioId,
+        player_label: playerLabel,
+        filter_mode: filterMode,
+        threshold_rule: thresholdRule,
+      }),
+    }),
+
+  getMatch: (matchId: string) => request<MatchRecord>(`/api/matches/${matchId}`),
+
+  listMatches: () => request<MatchListItem[]>('/api/matches'),
+
+  runAI: (matchId: string, agent: string, deterministic = true) =>
+    request<AIRun>(`/api/matches/${matchId}/ai-run`, {
+      method: 'POST',
+      body: JSON.stringify({ agent, deterministic }),
+    }),
+
+  listAgents: () => request<AgentInfo[]>('/api/agents'),
 
   getState: (sessionId: string) =>
     request<{ session_id: string; state: FarmState }>(`/api/farm/${sessionId}/state`).then(

@@ -1,0 +1,30 @@
+{
+  "started": "2026-10-22T20:51:41",
+  "n_scenarios": 50,
+  "agents": {
+    "random": {
+      "status": "ok"
+    },
+    "rule_based": {
+      "status": "ok"
+    },
+    "ppo": {
+      "status": "ok",
+      "checkpoint": "models/ppo/farm_ppo_v2",
+      "timesteps": 2002944
+    }
+  },
+  "finished": "2026-10-22T20:52:01",
+  "episodes_run": 2850,
+  "episodes_successful": 2850,
+  "episodes_failed": 0,
+  "failures": [],
+  "episodes_skipped": 0,
+  "skipped_agents": [],
+  "skipped_episodes_planned": 0,
+  "human_vs_ai": {
+    "completed_human_matches": 0,
+    "rows": 0
+  },
+  "runtime_s": 18.5
+}

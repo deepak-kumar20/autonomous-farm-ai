@@ -46,8 +46,15 @@ CORS_ORIGINS: list = [
     ).split(",")
     if origin.strip()
 ]
+# The v2 checkpoint is trained on the scenario-driven environment (ENV_VERSION 2). The legacy
+# farm_ppo / farm_ppo_500k checkpoints are kept for the audit but are incompatible with v2.
 DEFAULT_PPO_MODEL_PATH: str = os.getenv(
     "PPO_MODEL_PATH",
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../models/ppo/farm_ppo_500k"))
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../models/ppo/farm_ppo_v2"))
+)
+# Saved scenarios and Human-vs-AI matches (created on demand; not needed for the app to start)
+DATA_DIR: str = os.getenv(
+    "FARM_DATA_DIR",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data"))
 )
 DEFAULT_SEED: int = int(os.getenv("DEFAULT_SEED", "42"))

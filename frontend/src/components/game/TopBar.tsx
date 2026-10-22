@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Home, Sprout, Store, Warehouse, CloudSun, Bot, BookOpen, RotateCcw, TrendingUp } from 'lucide-react';
+import { Home, Sprout, Store, Warehouse, CloudSun, Bot, BookOpen, RotateCcw, TrendingUp, Swords } from 'lucide-react';
 import { useFarmContext } from '../../context/FarmContext';
 import { useTween } from '../../hooks/useTween';
 import { Coin } from '../art/Scenery';
@@ -15,6 +15,7 @@ export const NAV_ITEMS = [
   { to: '/barn', label: 'Barn', icon: Warehouse, fx: 'barn' },
   { to: '/weather', label: 'Weather', icon: CloudSun, fx: 'weather' },
   { to: '/ai', label: 'AI Farmer', icon: Bot, fx: 'ai' },
+  { to: '/versus', label: 'Versus', icon: Swords, fx: 'versus' },
   { to: '/journal', label: 'Journal', icon: BookOpen, fx: 'journal' },
 ] as const;
 
@@ -156,7 +157,7 @@ export const TopBar: React.FC = () => {
       <ConfirmDialog
         open={confirmReset}
         title="Start a new season?"
-        body="Your fields, barn and coins reset to Day 1 with ₹10,000."
+        body="Your fields, barn and coins reset to Day 1 with ₹10,000 on a new random scenario."
         confirmLabel="New season"
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => {

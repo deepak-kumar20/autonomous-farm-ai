@@ -44,3 +44,6 @@ runs/
 # Environment variables
 .env
 .env.local
+
+# Runtime data: saved scenarios and Human-vs-AI matches (may contain participant sessions)
+/data/

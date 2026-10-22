@@ -3,7 +3,9 @@ from typing import Optional
 
 from ..dependencies import (
     get_farm_service,
+    get_match_store,
     FarmSessionManager,
+    MatchStore,
     get_ppo_service,
     PPOService,
 )
@@ -13,111 +15,72 @@ from ..schemas.ppo import (
     PPOStepRequest,
     PPOStepResponse,
 )
+from ..services.ppo_service import action_details
+from ...framework.feasibility import decide
 
 router = APIRouter(prefix="/ppo", tags=["PPO Agent"])
 
 
-@router.post(
-    "/predict",
-    response_model=PPOActionResponse,
-    summary="Predict Action with PPO Agent",
-)
+def _require_loaded(ppo: PPOService):
+    if not ppo.is_loaded:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=ppo.load_error or "PPO model is unavailable or not yet loaded",
+        )
+
+
+@router.post("/predict", response_model=PPOActionResponse, summary="Predict Action with PPO Agent")
 def predict_action(
     request: PPOPredictRequest,
     farm_mgr: FarmSessionManager = Depends(get_farm_service),
     ppo: PPOService = Depends(get_ppo_service),
 ):
-    """Asks the trained PPO agent to select an action given the session's current observation.
+    """Returns the action PPO would take now in this session, after the session's feasibility filter.
 
-    Does NOT advance the environment.
+    Does NOT advance the environment and records nothing.
     """
-    if not ppo.is_loaded:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=ppo.load_error or "PPO model is unavailable or not yet loaded",
-        )
-
+    _require_loaded(ppo)
     try:
-        env = farm_mgr.get_env(request.session_id)
+        sess = farm_mgr.get_session(request.session_id)
     except KeyError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Farm session '{request.session_id}' not found",
-        )
-
-    try:
-        action_idx, action_details = ppo.predict(
-            env=env,
-            deterministic=request.deterministic,
-        )
-        return PPOActionResponse(
-            session_id=request.session_id,
-            action=action_idx,
-            action_details=action_details,
-            deterministic=request.deterministic,
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Inference error: {str(e)}",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Farm session '{request.session_id}' not found")
+    if sess.env.season_over:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Season is over")
+    action_idx, details, extra = ppo.predict(sess.env, sess.filt, deterministic=request.deterministic)
+    return PPOActionResponse(
+        session_id=request.session_id, action=action_idx, action_details=details,
+        deterministic=request.deterministic, **extra,
+    )
 
 
-@router.post(
-    "/{session_id}/step",
-    response_model=PPOStepResponse,
-    summary="Take a Step with PPO Agent",
-)
+@router.post("/{session_id}/step", response_model=PPOStepResponse, summary="Take a Step with PPO Agent")
 def step_ppo(
     session_id: str,
     request: Optional[PPOStepRequest] = None,
     farm_mgr: FarmSessionManager = Depends(get_farm_service),
     ppo: PPOService = Depends(get_ppo_service),
+    matches: MatchStore = Depends(get_match_store),
 ):
-    """Queries PPO for an action and immediately executes it in the farm simulation.
-
-    Advances the simulation by one day and returns the resulting state and reward.
-    This facilitates seamless human-vs-AI turn-based interactions in the frontend.
-    """
+    """PPO proposes actions in order of preference; the session's filter accepts the first feasible one,
+    which is then executed (one simulated day). Rejections are logged on the session's day record."""
     req = request or PPOStepRequest()
-
-    if not ppo.is_loaded:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=ppo.load_error or "PPO model is unavailable or not yet loaded",
-        )
-
+    _require_loaded(ppo)
     try:
-        env = farm_mgr.get_env(session_id)
+        sess = farm_mgr.get_session(session_id)
     except KeyError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Farm session '{session_id}' not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Farm session '{session_id}' not found")
+    if sess.env.season_over:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Season is over")
 
-    try:
-        # 1. PPO picks action from exact Gymnasium observation
-        action_idx, action_details = ppo.predict(
-            env=env,
-            deterministic=req.deterministic,
-        )
-        # 2. Execute that action in the exact same environment
-        state, reward, terminated, truncated, info = farm_mgr.execute_action(
-            session_id=session_id,
-            action=action_idx,
-        )
-        return PPOStepResponse(
-            session_id=session_id,
-            action=action_idx,
-            action_details=action_details,
-            state=state,
-            reward=reward,
-            terminated=terminated,
-            truncated=truncated,
-            info=info,
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"PPO step execution error: {str(e)}",
-        )
+    ranked = ppo.ranked(sess.env, req.deterministic)
+    before = len(sess.env._candidates)
+    action_idx = decide(sess.env, ranked, sess.filt)
+    rejections = sum(1 for c in sess.env._candidates[before:] if not c.accepted)
+    state, reward, terminated, truncated, info = farm_mgr.step_accepted(session_id, action_idx)
+    if terminated and sess.match_id:
+        matches.complete_human(sess.match_id, sess.env)
+    return PPOStepResponse(
+        session_id=session_id, action=action_idx, action_details=action_details(action_idx),
+        state=state, reward=reward, terminated=terminated, truncated=truncated, info=info,
+        filter_rejections=rejections,
+    )

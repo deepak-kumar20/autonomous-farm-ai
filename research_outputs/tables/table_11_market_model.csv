@@ -1,0 +1,7 @@
+Agent,Market model,Episodes,Mean profit (₹),Profit SD (₹),Mean revenue (₹),Difference vs exogenous (₹)
+Random,exogenous,50,"17,477","11,844","25,397",reference
+Random,price_impact,50,"14,944","10,876","22,770","-2,532 [-3,003, -2,061]"
+Rule-based,exogenous,50,"27,844","15,866","39,324",reference
+Rule-based,price_impact,50,"20,629","13,385","31,154","-7,214 [-8,742, -5,686]"
+PPO,exogenous,50,"21,360","15,226",81,reference
+PPO,price_impact,50,"21,279","15,119",77,"-80 [-242, +81]"

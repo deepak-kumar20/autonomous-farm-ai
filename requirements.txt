@@ -5,3 +5,6 @@ numpy>=1.21.0
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
 httpx>=0.24.0
+# research outputs (tables/charts); not needed to run the app
+pandas>=1.5
+matplotlib>=3.6

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from ..config.settings import CORS_ORIGINS, DEFAULT_PPO_MODEL_PATH
-from .routes import health_router, farm_router, ppo_router
+from .routes import health_router, farm_router, ppo_router, scenario_router, match_router, agents_router
 from .services.ppo_service import ppo_service
 
 logging.basicConfig(
@@ -69,6 +69,9 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api")
     app.include_router(farm_router, prefix="/api")
     app.include_router(ppo_router, prefix="/api")
+    app.include_router(scenario_router, prefix="/api")
+    app.include_router(match_router, prefix="/api")
+    app.include_router(agents_router, prefix="/api")
 
     return app
 

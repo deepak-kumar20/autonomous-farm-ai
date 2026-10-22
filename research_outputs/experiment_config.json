@@ -1,0 +1,24 @@
+{
+  "description": "Configuration for scripts/run_experiments.py. Seeds 0..n_scenarios-1 are evaluation scenarios; PPO training used seeds >= 1e6 and validation seeds 900000-900019.",
+  "n_scenarios": 50,
+  "seed_offset": 0,
+  "agents": ["random", "rule_based", "ppo"],
+  "ppo_checkpoint": "models/ppo/farm_ppo_v2",
+  "ppo_deterministic": true,
+  "configs": {
+    "full": {"decision_order": "LFM", "filter_mode": "deterministic", "market_model": "exogenous"},
+    "no_filter": {"decision_order": "LFM", "filter_mode": "none", "market_model": "exogenous"},
+    "order_fml": {"decision_order": "FML", "filter_mode": "deterministic", "market_model": "exogenous"},
+    "uncertainty_fixed": {"decision_order": "LFM", "filter_mode": "uncertainty", "threshold_rule": "fixed", "completion_threshold": 0.8, "market_model": "exogenous"},
+    "uncertainty_break_even": {"decision_order": "LFM", "filter_mode": "uncertainty", "threshold_rule": "break_even", "market_model": "exogenous"},
+    "price_impact": {"decision_order": "LFM", "filter_mode": "deterministic", "market_model": "price_impact"}
+  },
+  "experiments": {
+    "A_agent_comparison": {"profiles": ["baseline"], "configs": ["full"], "question": "Which decision strategy earns more under identical baseline scenarios?"},
+    "B_feasibility_ablation": {"profiles": ["baseline", "combined"], "configs": ["full", "no_filter"], "question": "Does the pre-execution feasibility filter improve outcomes?"},
+    "C_decision_order": {"profiles": ["baseline", "combined"], "configs": ["full", "order_fml"], "question": "Does resolving losses before the decision (LFM) change outcomes vs. after (FML)?"},
+    "D_environmental_robustness": {"profiles": ["baseline", "dry", "pest", "combined"], "configs": ["full"], "question": "How do strategies degrade under drought and pest stress?"},
+    "F_feasibility_filters": {"profiles": ["baseline", "dry", "pest", "combined"], "configs": ["no_filter", "full", "uncertainty_fixed", "uncertainty_break_even"], "question": "How do the filter modes compare, and is the completion probability calibrated?"},
+    "M_market_model": {"profiles": ["baseline"], "configs": ["full", "price_impact"], "question": "How much does own-sales price impact change outcomes?"}
+  }
+}

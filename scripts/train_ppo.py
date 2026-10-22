@@ -1,42 +1,15 @@
-"""Entry-point script for training the PPO agent.
+"""Entry-point script for training the PPO agent (environment v2).
 
 Run from project root:
-    python scripts/train_ppo.py
+    python scripts/train_ppo.py                         # 1,000,000 steps, seed 7 → models/ppo/farm_ppo_v2.zip
+    python scripts/train_ppo.py --timesteps 200000 --out models/ppo/test_run
 """
-import sys
 import os
+import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from farm_ai.environment.farm_environment import FarmEnvironment
-from farm_ai.agents.ppo_agent import PPOAgent
-
-SEED = 42
-TOTAL_TIMESTEPS = 50_000
-MODEL_SAVE_PATH = os.path.join(os.path.dirname(__file__), "../models/ppo/farm_ppo")
-TENSORBOARD_LOG = os.path.join(os.path.dirname(__file__), "../runs/ppo")
-
-
-def main():
-    print("=" * 50)
-    print("PPO TRAINING — Autonomous Farm AI")
-    print("=" * 50)
-    print(f"Seed:             {SEED}")
-    print(f"Total timesteps:  {TOTAL_TIMESTEPS:,}")
-    print(f"Save path:        {MODEL_SAVE_PATH}.zip")
-    print("=" * 50)
-
-    env = FarmEnvironment()
-    env.reset(seed=SEED)
-
-    agent = PPOAgent(env=env, seed=SEED, tensorboard_log=TENSORBOARD_LOG)
-    agent.train(total_timesteps=TOTAL_TIMESTEPS)
-    agent.save(MODEL_SAVE_PATH)
-
-    print("\n✅ Training complete.")
-    print(f"   Model at: {os.path.abspath(MODEL_SAVE_PATH)}.zip")
-    print("   TensorBoard: tensorboard --logdir runs/ppo")
-
+from farm_ai.training.train_ppo import main  # noqa: E402
 
 if __name__ == "__main__":
     main()

@@ -1,24 +1,28 @@
-import os
 import logging
-from typing import Optional, Dict, Any, Tuple
-import numpy as np
+from typing import Optional, Dict, Any, Tuple, List
 
-from ...agents.ppo_agent import PPOAgent
 from ...environment.farm_environment import FarmEnvironment, _int_action_to_farm_action
+from ...framework.agents import PPOPolicy, PPOCheckpointError
+from ...framework.feasibility import FeasibilityFilter
 from .farm_service import to_json_compatible
 
 logger = logging.getLogger("farm_ai.api.ppo_service")
 
 
-class PPOService:
-    """Service for loading and querying a trained PPO model.
+def action_details(action_idx: int) -> Dict[str, Any]:
+    a = _int_action_to_farm_action(int(action_idx))
+    return {"id": int(action_idx), "type": a.type.value, "label": str(a), "field_id": a.field_id, "crop_name": a.crop_name}
 
-    The model is loaded ONCE on application startup and reused across requests.
-    FastAPI never trains or retrains PPO.
+
+class PPOService:
+    """Loads one PPO checkpoint at startup (after a compatibility check) and serves decisions.
+
+    Decisions use the same Stage 2 → 3 path as experiments: the policy ranks all actions and the
+    session's feasibility filter picks the first acceptable one.
     """
 
     def __init__(self):
-        self._agent: Optional[PPOAgent] = None
+        self._agent: Optional[PPOPolicy] = None
         self._model_path: Optional[str] = None
         self._is_loaded: bool = False
         self._load_error: Optional[str] = None
@@ -35,60 +39,51 @@ class PPOService:
     def load_error(self) -> Optional[str]:
         return self._load_error
 
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        return dict(self._agent.meta) if self._agent is not None else {}
+
     def load_model(self, model_path: str) -> bool:
-        """Loads a PPO model once from disk.
-
-        Handles missing model gracefully without crashing the server.
-        """
         self._model_path = model_path
-        # Normalize path: check with or without .zip
-        check_path = model_path if model_path.endswith(".zip") else f"{model_path}.zip"
-
-        if not os.path.isfile(check_path):
-            # Also check relative to project root or parent directories
-            alt_path = os.path.abspath(check_path)
-            if not os.path.isfile(alt_path):
-                self._load_error = f"PPO model file not found at '{check_path}'"
-                logger.warning(self._load_error)
-                self._is_loaded = False
-                self._agent = None
-                return False
-
         try:
-            logger.info(f"Loading PPO model from '{model_path}'...")
-            dummy_env = FarmEnvironment()
-            self._agent = PPOAgent.load(model_path, env=dummy_env)
+            self._agent = PPOPolicy(model_path, deterministic=True)
             self._is_loaded = True
             self._load_error = None
-            logger.info("PPO model loaded successfully.")
+            logger.info("PPO model loaded from '%s'", self._agent.path)
             return True
-        except Exception as e:
-            self._load_error = f"Failed to load PPO model: {str(e)}"
-            logger.error(self._load_error, exc_info=True)
-            self._is_loaded = False
-            self._agent = None
-            return False
+        except PPOCheckpointError as e:
+            self._load_error = f"PPO checkpoint unusable: {e}"
+        except Exception as e:  # pragma: no cover - defensive
+            self._load_error = f"Failed to load PPO model: {e}"
+        logger.warning(self._load_error)
+        self._is_loaded = False
+        self._agent = None
+        return False
 
-    def predict(self, env: FarmEnvironment, deterministic: bool = True) -> Tuple[int, Dict[str, Any]]:
-        """Queries the loaded PPO model with the current environment observation."""
+    def _require(self) -> PPOPolicy:
         if not self._is_loaded or self._agent is None:
-            raise RuntimeError(
-                self._load_error or "PPO model is not loaded. Train a model first with scripts/train_ppo.py"
-            )
+            raise RuntimeError(self._load_error or "PPO model is not loaded. Train one with scripts/train_ppo.py")
+        return self._agent
 
-        obs = env._get_observation()
-        action_idx = self._agent.select_action(obs, deterministic=deterministic)
-        farm_action = _int_action_to_farm_action(action_idx)
+    def ranked(self, env: FarmEnvironment, deterministic: bool = True) -> List[int]:
+        agent = self._require()
+        agent.deterministic = deterministic
+        return agent.rank(env)
 
-        action_details = {
-            "id": int(action_idx),
-            "type": farm_action.type.value,
-            "label": str(farm_action),
-            "field_id": farm_action.field_id,
-            "crop_name": farm_action.crop_name,
-        }
-
-        return int(action_idx), to_json_compatible(action_details)
+    def predict(self, env: FarmEnvironment, filt: Optional[FeasibilityFilter] = None,
+                deterministic: bool = True) -> Tuple[int, Dict[str, Any], Dict[str, Any]]:
+        """Returns the action PPO would take now (after the filter), without side effects."""
+        ranked = self.ranked(env, deterministic)
+        raw = int(ranked[0])
+        chosen, rejected = raw, 0
+        if filt is not None and filt.mode != "none":
+            for a in ranked:
+                if filt.check(env, int(a)).accepted:
+                    chosen = int(a)
+                    break
+                rejected += 1
+        extra = {"policy_top_action": action_details(raw), "filter_rejections": rejected}
+        return chosen, to_json_compatible(action_details(chosen)), to_json_compatible(extra)
 
 
 # Global singleton instance for the FastAPI application

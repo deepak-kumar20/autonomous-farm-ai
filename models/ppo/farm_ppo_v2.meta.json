@@ -1,0 +1,68 @@
+{
+  "env_version": 2,
+  "obs_size": 27,
+  "n_actions": 24,
+  "algorithm": "PPO (stable-baselines3)",
+  "timesteps": 2002944,
+  "seed": 7,
+  "n_envs": 8,
+  "hyperparams": {
+    "policy": "MlpPolicy",
+    "policy_kwargs": {
+      "net_arch": [
+        128,
+        128
+      ]
+    },
+    "n_steps": 512,
+    "batch_size": 256,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "learning_rate": 0.0003,
+    "clip_range": 0.2,
+    "ent_coef": 0.01
+  },
+  "reward": "\u0394wealth (\u20b9) per day, \u221250 for an invalid action, \u00d7 1e-3 during training",
+  "train_config": {
+    "decision_order": "LFM",
+    "filter_mode": "none",
+    "market_model": "exogenous",
+    "threshold_rule": "fixed",
+    "completion_threshold": 0.8,
+    "price_impact": {
+      "reference_supply": 500.0,
+      "elasticity": 0.5,
+      "decay": 0.7,
+      "min_factor": 0.25
+    }
+  },
+  "train_profiles": [
+    "baseline",
+    "dry",
+    "pest",
+    "combined"
+  ],
+  "train_seed_range": "[1e6, 2^31) drawn by the env RNG",
+  "validation_seeds": [
+    900000,
+    900019
+  ],
+  "final_validation": [
+    {
+      "timesteps": 2002944,
+      "filter_mode": "none",
+      "mean_profit": 18398.486763960304,
+      "sd_profit": 11864.897908808474,
+      "invalid_rate": 0.08833333333333333
+    },
+    {
+      "timesteps": 2002944,
+      "filter_mode": "deterministic",
+      "mean_profit": 19341.64032178159,
+      "sd_profit": 12146.154096458698,
+      "invalid_rate": 0.0
+    }
+  ],
+  "train_seconds": 394.8
+}
